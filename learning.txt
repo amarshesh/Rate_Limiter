@@ -1,0 +1,5 @@
+i) start by creating a singlke class wiht 1 fucntion whihch will see if the user already exist and 
+if the user has crossed its request for whole time let say 10 time lifetigm then dont allowed
+ii) next step make it time stamp wise like.. check for each user how many time it can enter in within 5 or 10 seconds
+iii) since now we are keeping the rules and all in the same class, we need to sepearte the responsiblities
+e.g create a rule calss which will keep the data for now in the first go...
