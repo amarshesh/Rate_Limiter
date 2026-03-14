@@ -1,36 +1,49 @@
-# test_rate.py
+from Algorithms.tokenBucket import TokenBucket
+from user_request_store import UserRequestStore
+from strategy.interfaceStrategy import TokenBucketStrategy
 from rate_lemiter import RateLimiter
-import rate_lemiter
 
 fake_time = [1000.0]
+
 def now():
     return fake_time[0]
-rate_lemiter.time = now
 
-lim = RateLimiter()
+# bucket config
+tokenBucket = TokenBucket(capacity=3, refill_rate=1, last_refill_timestamp=now())
+request_store = UserRequestStore(prototype_bucket=tokenBucket)
 
-# Scenario A: 6 rapid requests (within window)
-print("A1", lim.is_allowed("A"))  # True (1)
-fake_time[0] += 10
-print("A2", lim.is_allowed("A"))  # True (2)
-fake_time[0] += 10
-print("A3", lim.is_allowed("A"))  # True (3)
-fake_time[0] += 10
-print("A4", lim.is_allowed("A"))  # True (4)
-fake_time[0] += 10
-print("A5", lim.is_allowed("A"))  # True (5)
-fake_time[0] += 10
-print("A6", lim.is_allowed("A"))  # False (exceeded)
+strategy = TokenBucketStrategy(request_store=request_store)
+lim = RateLimiter(strategy)
 
-# Scenario B: after >300s window reset
-fake_time[0] += 301
-print("A_after_reset", lim.is_allowed("A"))  # True (reset to 1)
+print("\n--- Burst test (capacity = 3) ---")
 
-# Scenario C: exact boundary at 300s
-fake_time[0] = 5000.0
-print("B1", lim.is_allowed("B"))  # True (1)
-fake_time[0] += 300.0
-print("B_at_300s", lim.is_allowed("B"))  # True (counts as inside window)
+print("R1", lim.is_allowed("A", now()))
+print("R2", lim.is_allowed("A", now()))
+print("R3", lim.is_allowed("A", now()))
+print("R4", lim.is_allowed("A", now()))  # should fail
 
-# Scenario D: independent users
-print("C1 (new user C)", lim.is_allowed("C"))  # True
+bucket = request_store.get_bucket_for_user("A")
+print("tokens after burst:", bucket.tokens)
+
+print("\n--- Wait 2 seconds (refill expected = 2 tokens) ---")
+
+fake_time[0] += 2
+
+print("R5", lim.is_allowed("A", now()))
+print("R6", lim.is_allowed("A", now()))
+print("R7", lim.is_allowed("A", now()))  # should fail again
+
+bucket = request_store.get_bucket_for_user("A")
+print("tokens after refill usage:", bucket.tokens)
+
+print("\n--- Wait 5 seconds (bucket should refill to capacity) ---")
+
+fake_time[0] += 5
+
+print("R8", lim.is_allowed("A", now()))
+print("R9", lim.is_allowed("A", now()))
+print("R10", lim.is_allowed("A", now()))
+print("R11", lim.is_allowed("A", now()))  # should fail
+
+bucket = request_store.get_bucket_for_user("A")
+print("final tokens:", bucket.tokens)
